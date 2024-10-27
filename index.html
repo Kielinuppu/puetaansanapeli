@@ -96,6 +96,11 @@
             margin-top: 10px;
         }
 
+        .disabled-arrow {
+            opacity: 0.5; 
+            cursor: not-allowed; 
+        }
+
         #switchGameButton {
             margin-top: 10px;
         }
@@ -179,6 +184,7 @@
         const audiosTavutettu = Array.from({length: 12}, (_, i) => `aani${i+1}.mp3`);
         let currentIndex = 0;
         let currentGameMode = '';
+        let audioPlaying = false;
 
         const sanaButton = document.getElementById('sanaButton');
         const tavutettuButton = document.getElementById('tavutettuButton');
@@ -196,22 +202,29 @@
         switchGameButton.addEventListener('click', switchGame);
 
         function startGame(mode) {
-            currentGameMode = mode;
-            mainTitle.style.display = 'none';
-            document.getElementById('buttonContainer').style.display = 'none';
-            gameHeader.style.display = 'block';
-            gameHeader.textContent = mode === 'tavutettu' ? 'TAVUTA SANAT TAPUTTAEN:' : 'TOISTA SANAT:';
-            imageContainer.style.display = 'flex';
-            thumbnailContainer.style.display = 'none';
-            thumbnailContainer.innerHTML = '';
-            switchGameButton.style.display = 'none';
-            currentIndex = 0;
+    currentGameMode = mode;
+    mainTitle.style.display = 'none';
+    document.getElementById('buttonContainer').style.display = 'none';
+    gameHeader.style.display = 'block';
+    gameHeader.textContent = mode === 'tavutettu' ? 'TAVUTA SANAT TAPUTTAEN:' : 'TOISTA SANAT:';
+    imageContainer.style.display = 'flex';
+    thumbnailContainer.style.display = 'none';
+    thumbnailContainer.innerHTML = '';
+    switchGameButton.style.display = 'none';
+    currentIndex = 0;
+    audioPlaying = true;
 
-            showImage(0);
-            playAudio(mode === 'tavutettu' ? 'tavuta.mp3' : 'toista.mp3', () => {
-                playAudio(currentGameMode === 'tavutettu' ? audiosTavutettu[0] : audiosSana[0]);
-            });
-        }
+    nextArrow.classList.add('disabled-arrow');
+
+    showImage(0);
+
+    playAudio(mode === 'tavutettu' ? 'tavuta.mp3' : 'toista.mp3', () => {
+        playAudio(currentGameMode === 'tavutettu' ? audiosTavutettu[0] : audiosSana[0], () => {
+            audioPlaying = false;
+            nextArrow.classList.remove('disabled-arrow');
+        });
+    });
+}
 
         function showImage(index) {
             const images = currentGameMode === 'tavutettu' ? imagesTavutettu : imagesSana;
@@ -220,27 +233,40 @@
         }
 
         function showNextImage() {
-            currentIndex++;
-            if (currentIndex < 12) {
-                showImage(currentIndex);
-                playAudio(currentGameMode === 'tavutettu' ? audiosTavutettu[currentIndex] : audiosSana[currentIndex]);
-            } else {
-                showThumbnails();
-            }
-        }
+    if (audioPlaying) return;
+    currentIndex++;
+    if (currentIndex < 12) {
+        audioPlaying = true;
+        nextArrow.classList.add('disabled-arrow');
+        showImage(currentIndex);
+        
+        playAudio(currentGameMode === 'tavutettu' ? audiosTavutettu[currentIndex] : audiosSana[currentIndex], () => {
+            audioPlaying = false;
+            nextArrow.classList.remove('disabled-arrow');
+        });
+    } else {
+        showThumbnails();
+    }
+}
 
-        function playAudio(audioSrc, callback) {
-            const audio = new Audio(audioSrc);
-            audio.onended = callback;
-            audio.onerror = (e) => {
-                console.error('Virhe äänen toistossa:', e);
-                if (callback) callback();
-            };
-            audio.play().catch(e => {
-                console.error('Virhe äänen toistossa:', e);
-                if (callback) callback();
-            });
-        }
+function playAudio(audioSrc, callback) {
+    const audio = new Audio(audioSrc);
+    audio.onended = () => {
+        if (callback) callback();
+        audioPlaying = false; 
+    };
+    audio.onerror = (e) => {
+        console.error('Virhe äänen toistossa:', e);
+        if (callback) callback();
+        audioPlaying = false;
+    };
+    audioPlaying = true; 
+    audio.play().catch(e => {
+        console.error('Virhe äänen toistossa:', e);
+        if (callback) callback();
+        audioPlaying = false;
+    });
+}
 
         function showThumbnails() {
             nextArrow.style.display = 'none';
